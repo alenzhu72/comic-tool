@@ -183,51 +183,64 @@ function chooseState(index, total) {
   return "延续上一格状态，只改变一个关键变量";
 }
 
-function makeLayouts(panelCount) {
+function makeLayouts(panelCount, pageSize) {
+  const [width, height] = parsePageSize(pageSize);
   return [
     {
       id: "structure-a",
       name: "共享边界马赛克",
       reason: "节奏均衡，适合清楚交代一连串日常动作。",
-      frames: buildFrames(panelCount, "mosaic"),
+      frames: buildFrames(panelCount, "mosaic", width, height),
     },
     {
       id: "structure-b",
       name: "大转折格加反应格",
       reason: "把倒数第二格作为视觉锚点，让笑点或转折更强。",
-      frames: buildFrames(panelCount, "anchor"),
+      frames: buildFrames(panelCount, "anchor", width, height),
     },
     {
       id: "structure-c",
       name: "开放结尾",
       reason: "最后一格留白更多，适合安静、尴尬或自嘲式落点。",
-      frames: buildFrames(panelCount, "open"),
+      frames: buildFrames(panelCount, "open", width, height),
     },
   ];
 }
 
-function buildFrames(count, mode) {
+function parsePageSize(pageSize) {
+  const [width, height] = String(pageSize || "1080x1920").split("x").map(Number);
+  return [width || 1080, height || 1920];
+}
+
+function buildFrames(count, mode, w, h) {
   const frames = [];
-  const gutter = 28;
-  const w = 1200;
-  const h = 1600;
+  const gutter = Math.round(Math.min(w, h) * 0.026);
+  const topOffset = Math.round(h * 0.015);
   if (mode === "anchor" && count >= 5) {
-    frames.push([gutter, gutter, 548, 330], [624, gutter, 548, 330]);
-    frames.push([gutter, 386, 1144, 554]);
+    const topH = Math.round(h * 0.2);
+    const middleY = topOffset + topH + gutter;
+    const middleH = Math.round(h * 0.34);
+    const bottomY = middleY + middleH + gutter;
+    const bottomH = h - bottomY - gutter;
+    const topW = Math.round((w - gutter * 3) / 2);
+    frames.push([gutter, topOffset, topW, topH], [gutter * 2 + topW, topOffset, w - gutter * 3 - topW, topH]);
+    frames.push([gutter, middleY, w - gutter * 2, middleH]);
     const bottomCount = count - 3;
-    const bottomW = (1144 - gutter * (bottomCount - 1)) / bottomCount;
-    for (let i = 0; i < bottomCount; i += 1) frames.push([gutter + i * (bottomW + gutter), 968, bottomW, 604]);
+    const bottomW = (w - gutter * 2 - gutter * (bottomCount - 1)) / bottomCount;
+    for (let i = 0; i < bottomCount; i += 1) frames.push([gutter + i * (bottomW + gutter), bottomY, bottomW, bottomH]);
     return frames.slice(0, count);
   }
   if (mode === "open") {
     const topCount = Math.max(2, count - 1);
-    const rowH = 240;
+    const rowH = Math.round(h * 0.16);
+    const colW = (w - gutter * 3) / 2;
     for (let i = 0; i < topCount; i += 1) {
       const col = i % 2;
       const row = Math.floor(i / 2);
-      frames.push([gutter + col * 586, gutter + row * (rowH + gutter), 558, rowH]);
+      frames.push([gutter + col * (colW + gutter), topOffset + row * (rowH + gutter), colW, rowH]);
     }
-    frames.push([gutter, h - 520, w - gutter * 2, 492]);
+    const finalH = Math.round(h * 0.34);
+    frames.push([gutter, h - finalH - gutter, w - gutter * 2, finalH]);
     return frames.slice(0, count);
   }
   const rows = Math.ceil(count / 2);
@@ -244,9 +257,9 @@ function buildFrames(count, mode) {
 
 function buildPrompt(data) {
   const lines = data.beats
-    .map((beat, index) => `${index + 1}. ${beat.role}：${beat.action}；镜头：${beat.camera}${beat.dialogue ? `；对白：${beat.dialogue}` : ""}`)
+    .map((beat, index) => `${index + 1}. ${beat.role}：${beat.action}；镜头：${beat.camera}${beat.dialogue ? `；配音参考：${beat.dialogue}` : ""}`)
     .join("\n");
-  return `生成一页完整的系列日记漫画，不要拆成独立插图。\n\n固定角色：${data.characterProfile}\n\n画面风格：${data.visualStyle}\n页面尺寸：${data.pageSize}\n选定结构：${data.selectedLayout.name}\n\n分镜：\n${lines}\n\n要求：保持角色脸、发型、服装、随身物一致；只出现锁定对白；气泡归属清楚；关键道具的位置变化可见；不要添加水印、logo、无关文字或受版权保护的角色。`;
+  return `生成一张完整的系列漫画/有声书视频画面，不要拆成独立插图。\n\n固定角色：${data.characterProfile}\n\n画面风格：${data.visualStyle}\n页面尺寸：${data.pageSize}\n选定结构：${data.selectedLayout.name}\n\n分镜：\n${lines}\n\n重要多语种要求：图片里不要出现任何可读文字，不要标题，不要对白气泡，不要字幕，不要招牌文字，不要手机屏幕文字，不要车站名，不要水印或 logo。对白/旁白只作为后期配音和字幕脚本，不渲染在画面中。\n\n画面要求：保持角色脸、发型、服装、随身物一致；用表情、动作、镜头和道具位置表达剧情；关键道具的位置变化可见；避免受版权保护的角色。`;
 }
 
 function buildImageJobs(data) {
@@ -259,12 +272,12 @@ function buildImageJobs(data) {
     const continuityLine =
       episodeNumber === 1
         ? "这是系列第一张，建立固定角色外观和页面语言。"
-        : `这是同一系列第 ${episodeNumber} 张，必须延续第 1 张的角色身份、线稿、上色和气泡语言。`;
+        : `这是同一系列第 ${episodeNumber} 张，必须延续第 1 张的角色身份、线稿、上色和镜头语言。`;
     jobs.push({
       id: `image-${String(episodeNumber).padStart(2, "0")}`,
       filename: `${slugify(data.seriesTitle)}-${String(episodeNumber).padStart(2, "0")}.png`,
       size: data.pageSize,
-      prompt: `${basePrompt}\n\n系列连续性：${continuityLine}\n输出：一张完整漫画页面，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，不要只给单格，不要给流程图。`,
+      prompt: `${basePrompt}\n\n系列连续性：${continuityLine}\n输出：一张完整的有声书视频画面，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，不要只给单格，不要给流程图，不要在画面里出现任何文字。`,
     });
   }
   return jobs;
@@ -288,6 +301,7 @@ function buildContract(data) {
       mode: "codex-imagegen-task-pack",
       count: data.imageJobs?.length || 0,
       note: "静态网页不能直接调用 Codex 内置 image_gen；把 imageJobs 交给 Codex 聊天或接入 OpenAI Images API 后端。",
+      text_policy: "image-no-readable-text; dialogue-for-audio-only",
     },
     story_source: data.story,
     analysis: {
@@ -309,7 +323,8 @@ function buildContract(data) {
     })),
     global_rules: [
       "保持固定角色身份不漂移",
-      "最终页只包含已锁定对白",
+      "最终图片不包含任何可读文字、对白气泡、字幕、标题、水印或 logo",
+      "对白和旁白只作为多语种有声书配音脚本",
       "关键道具、手部、方向和最终状态必须可见",
       "公开发布前必须人工验收原始尺寸和 25% 缩略图",
     ],
@@ -327,7 +342,8 @@ function collectData() {
   }
   const panelCount = Math.max(4, Math.min(8, Number($("#panelCount").value) || 5));
   const dialogue = parseDialogue($("#dialogueInput").value);
-  const layouts = makeLayouts(panelCount);
+  const pageSize = $("#pageSize").value;
+  const layouts = makeLayouts(panelCount, pageSize);
   const selectedLayout = layouts[panelCount >= 5 ? 1 : 0];
   const data = {
     id: makeId(),
@@ -338,7 +354,7 @@ function collectData() {
     story: $("#storyInput").value.trim(),
     panelCount,
     episodeCount: Math.max(1, Math.min(12, Number($("#episodeCount").value) || 1)),
-    pageSize: $("#pageSize").value,
+    pageSize,
     visualStyle: $("#visualStyle").value,
     dialogue,
     layouts,
@@ -360,12 +376,13 @@ function makeId() {
 function drawPreview(data) {
   const canvas = $("#pageCanvas");
   const ctx = canvas.getContext("2d");
+  const [width, height] = parsePageSize(data.pageSize);
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.aspectRatio = `${width} / ${height}`;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#fffdf8";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#202124";
-  ctx.font = "700 38px Microsoft YaHei, sans-serif";
-  ctx.fillText(data.seriesTitle, 44, 76);
   const palette = ["#d9e8f5", "#e7ddd4", "#dceadd", "#f0dfeb", "#f3e7c8", "#dce2ec", "#e8ded9", "#d8ebe7"];
   data.selectedLayout.frames.forEach((frame, index) => {
     const [x, y, w, h] = frame;
@@ -373,8 +390,8 @@ function drawPreview(data) {
     ctx.translate(x, y);
     ctx.fillStyle = palette[index % palette.length];
     ctx.strokeStyle = "#202124";
-    ctx.lineWidth = 5;
-    roundRect(ctx, 0, 0, w, h, 18);
+    ctx.lineWidth = Math.max(3, Math.round(Math.min(canvas.width, canvas.height) * 0.004));
+    roundRect(ctx, 0, 0, w, h, Math.round(Math.min(canvas.width, canvas.height) * 0.016));
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,.72)";
@@ -382,13 +399,12 @@ function drawPreview(data) {
     ctx.arc(w * 0.28, h * 0.52, Math.min(w, h) * 0.14, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#202124";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(2, Math.round(Math.min(canvas.width, canvas.height) * 0.003));
     ctx.stroke();
     ctx.fillStyle = "#202124";
-    ctx.font = "700 30px Microsoft YaHei, sans-serif";
-    ctx.fillText(`P${index + 1}`, 24, 42);
-    ctx.font = "24px Microsoft YaHei, sans-serif";
-    wrapText(ctx, data.beats[index]?.role || "", 24, h - 62, w - 48, 30);
+    ctx.globalAlpha = 0.18;
+    ctx.fillRect(Math.round(w * 0.04), Math.round(h * 0.05), Math.round(w * 0.18), Math.max(5, Math.round(h * 0.015)));
+    ctx.globalAlpha = 1;
     ctx.restore();
   });
 }

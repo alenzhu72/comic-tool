@@ -28,10 +28,17 @@ app.js
 - 4-8 格分镜；
 - 页面结构预览；
 - 可复制给图像模型的整页漫画提示词；
+- 多语种有声书友好的无文字图片提示词；
 - 延续系列用的 JSON 合同；
 - localStorage 保存的剧集历史；
 - 可下载的 `.comic.json` 文件。
 - Codex 图片生成任务包。
+
+默认画幅面向视频制作：
+
+- 手机竖版：`1080x1920`，适合 Shorts、Reels、TikTok 等竖屏视频；
+- YouTube 横版：`1920x1080`，适合 16:9 横屏有声书视频；
+- 方版封面：`1080x1080`，适合封面或社交预览。
 
 ## 关于真正生成图片
 
@@ -49,5 +56,5 @@ python skills/recurring-character-diary-comic/scripts/self_test_compositor.py
 如果后续要真正“自动出图”，建议路线是：
 
 1. 用本地网页生成分镜和整页提示词。
-2. 用 Codex/ImageGen 或 OpenAI Images API 生成一张完整无字页或带字页。
-3. 若中文对白不准，使用技能包里的 `compose_panels.py` 对无字整页做确定性加字。
+2. 用 Codex/ImageGen 或 OpenAI Images API 生成一张完整无字图片。
+3. 对白和旁白保留在导出的 JSON 中，后续用于葡萄牙语、英语、中文等多语种配音或字幕，不写入图片画面。
