@@ -41,6 +41,7 @@ Open `index.html` directly. You can paste a story or load a `.txt` file, then us
 - 可复制给图像模型的整页漫画提示词；
 - 多语种有声书友好的无文字图片提示词；
 - 输出布局设置，默认生成 `5 合 1 分镜漫画页`；
+- 生成平台设置，可选择 `ChatGPT 网页版长提示词` 或 `Codex 批量指令`；
 - 亮度设置，默认使用更适合手机/YouTube 视频的明亮可读画面；
 - 延续系列用的 JSON 合同；
 - localStorage 保存的剧集历史；
@@ -49,6 +50,7 @@ Open `index.html` directly. You can paste a story or load a `.txt` file, then us
 
 - text-free prompts for multilingual audiobook images;
 - output layout control, defaulting to a `5-in-1 comic page`;
+- prompt target control for `ChatGPT Web detailed prompts` or `Codex batch instruction`;
 - brightness control, defaulting to a brighter video-ready look for mobile and YouTube;
 - JSON contracts for continuity;
 - Codex image-generation task packs.
@@ -76,6 +78,12 @@ Image prompts are text-free by default: no titles, speech bubbles, subtitles, si
 - 明亮可读 / Brighter video-ready：默认选项，减少大片死黑，适合视频观看；
 - 标准平衡 / Balanced：保留电影感，暗部仍有细节；
 - 偏暗悬疑 / Dark suspense：更暗，但仍要求主体和关键动作可见。
+
+## 生成平台 / Prompt Target
+
+如果要在网页版 ChatGPT 里生成图片，选择 `ChatGPT 网页版长提示词 / ChatGPT Web detailed prompts`。这个模式会输出更长、更完整、可逐张复制的提示词，包含画幅、角色连续性、5 合 1 分镜布局、无文字规则、亮度要求和输出前检查。
+
+If you will generate images in ChatGPT Web, choose `ChatGPT Web detailed prompts`. This creates longer prompts that can be copied one by one, including canvas, character continuity, 5-in-1 page layout, no-text rules, brightness, and quality checks.
 
 ## 关于真正生成图片
 

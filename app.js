@@ -16,6 +16,7 @@ const formIds = [
   "pageSize",
   "visualStyle",
   "outputLayout",
+  "promptTarget",
   "brightnessMode",
   "dialogueInput",
 ];
@@ -318,9 +319,69 @@ function buildImageJobs(data) {
       filename: `${slugify(data.seriesTitle)}-${String(episodeNumber).padStart(2, "0")}.png`,
       size: data.pageSize,
       prompt: `${basePrompt}\n\n系列连续性 / Series continuity:\n${continuityLine}\n\n输出 / Output:\n一张完整的 ${data.panelCount} 合 1 漫画页，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，包含清楚分隔的多个分镜格，不要只给单格，不要给流程图，不要在画面里出现任何文字。\nOne complete ${data.panelCount}-in-1 comic page, aspect ratio ${widthHeight[0]}:${widthHeight[1]}, with clearly separated comic panels; not a single panel, not a flowchart, and no text anywhere in the image.`,
+      chatgptPrompt: buildChatGPTWebPrompt(data, episodeNumber, continuityLine),
     });
   }
   return jobs;
+}
+
+function buildChatGPTWebPrompt(data, episodeNumber, continuityLine) {
+  const brightness = getBrightnessSpec(data.brightnessMode);
+  const layout = getOutputLayoutSpec(data.outputLayout, data.panelCount, data.selectedLayout.name);
+  const beatLines = data.beats
+    .map((beat, index) => {
+      const visualOnly = beat.dialogue ? ` Voiceover reference only, do not draw text: ${beat.dialogue}` : "";
+      return `Panel ${index + 1} / 第 ${index + 1} 格: ${beat.role}. Visual action: ${beat.action}. Camera: ${beat.camera}. Continuity state: ${beat.state}.${visualOnly}`;
+    })
+    .join("\n");
+  return `Please generate image ${episodeNumber} for a recurring multilingual audiobook comic series.
+
+Goal / 目标:
+Create one finished image that looks like a complete comic page, ready to use in a vertical or horizontal audiobook video. The image itself must be language-neutral because the same artwork will be used for Chinese, English, Portuguese, and other dubbed versions.
+
+Output file name / 建议文件名:
+${slugify(data.seriesTitle)}-${String(episodeNumber).padStart(2, "0")}.png
+
+Canvas / 画幅:
+${data.pageSize}. Keep the full image in this aspect ratio. Leave no UI frame, browser chrome, mockup border, or extra margin around the comic page.
+
+Series continuity / 系列连续性:
+${continuityLine}
+
+Recurring character / 固定角色:
+${data.characterProfile}
+Keep the same face, hair, age, outfit, body proportions, posture language, and recurring belongings across all images. If this is image 1, establish the character clearly. If this is a later image, preserve the character identity from image 1.
+
+Visual style / 画风:
+${data.visualStyle}
+Make it a gentle hand-drawn diary comic with clean ink lines, controlled shapes, light watercolor texture, expressive character acting, and a polished storybook-comic finish. Avoid photorealism unless explicitly requested.
+
+Brightness / 亮度:
+${brightness.prompt}
+
+Layout / 版式:
+${layout.prompt}
+The image should resemble a complete finished comic page, not a collage of unrelated pictures. Maintain consistent border thickness, gutter spacing, line style, palette, and lighting across all panels.
+
+Storyboard / 分镜:
+${beatLines}
+
+Strict no-text rule / 严格无文字规则:
+Do not put any readable text anywhere in the image. No title, no subtitle, no speech bubbles, no captions, no narration boxes, no labels, no signs, no station names, no numbers, no route maps with readable letters, no phone-screen text, no posters with text, no logos, and no watermark. If a sign, poster, map, book, phone, screen, or label appears, make it blank or abstract with no legible characters.
+
+Storytelling method / 叙事方式:
+Tell the story only through body language, facial expression, camera angle, environment, props, lighting, weather, reflections, and character placement. Any dialogue or narration is for voiceover only and must not be drawn.
+
+Quality check before final / 输出前检查:
+1. Is this one complete ${data.panelCount}-panel comic page?
+2. Are the panels clearly separated and easy to follow?
+3. Is the same recurring character preserved?
+4. Is the image bright enough for mobile and YouTube viewing?
+5. Is there absolutely no readable text anywhere?
+6. Does it avoid gore, copyrighted characters, logos, and watermarks?
+
+Negative prompt / 避免:
+single cinematic scene, one-panel poster, photorealistic still, unreadable dark image, crushed black shadows, speech bubble, title card, subtitle, caption, sign text, logo, watermark, UI screenshot, random character redesign, inconsistent outfit, extra main protagonist.`;
 }
 
 function buildCodexInstruction(data) {
@@ -350,6 +411,7 @@ function buildContract(data) {
         mode: data.brightnessMode,
         label: getBrightnessSpec(data.brightnessMode).label,
       },
+      prompt_target: data.promptTarget,
     },
     story_source: data.story,
     analysis: {
@@ -407,6 +469,7 @@ function collectData() {
     pageSize,
     visualStyle: $("#visualStyle").value,
     outputLayout: $("#outputLayout").value,
+    promptTarget: $("#promptTarget").value,
     brightnessMode: $("#brightnessMode").value,
     dialogue,
     layouts,
@@ -416,8 +479,15 @@ function collectData() {
   data.prompt = buildPrompt(data);
   data.imageJobs = buildImageJobs(data);
   data.codexInstruction = buildCodexInstruction(data);
+  data.chatgptInstruction = buildChatGPTInstruction(data);
   data.contract = buildContract(data);
   return data;
+}
+
+function buildChatGPTInstruction(data) {
+  return `Copy these prompts one by one into ChatGPT Web image generation. Generate image 1 first and use it as the visual anchor for the later images. Keep all images text-free.\n\n${data.imageJobs
+    .map((job) => `=== ${job.filename} ===\n${job.chatgptPrompt}`)
+    .join("\n\n")}`;
 }
 
 function makeId() {
@@ -507,24 +577,26 @@ function renderViews(data) {
 }
 
 function renderImageJobs(data) {
+  const isChatGPT = data.promptTarget === "chatgpt-web";
+  const mainInstruction = isChatGPT ? data.chatgptInstruction : data.codexInstruction;
   $("#imagesView").innerHTML = `<div class="image-job-layout">
     <div class="job-actions">
-      <button type="button" id="copyCodexBtn">复制 Codex 批量指令 / Copy batch instruction</button>
+      <button type="button" id="copyBatchBtn">${isChatGPT ? "复制 ChatGPT 长提示词 / Copy ChatGPT prompts" : "复制 Codex 批量指令 / Copy Codex batch"}</button>
       <button type="button" id="copyFirstPromptBtn">复制第 1 张提示词 / Copy first prompt</button>
     </div>
-    <pre>${escapeHtml(data.codexInstruction)}</pre>
+    <pre>${escapeHtml(mainInstruction)}</pre>
     <div class="beat-grid">${data.imageJobs
       .map(
         (job) => `<article class="beat-card">
           <h3>${escapeHtml(job.filename)}</h3>
           <p class="small">${escapeHtml(job.size)}</p>
-          <p>${escapeHtml(job.prompt)}</p>
+          <p>${escapeHtml(isChatGPT ? job.chatgptPrompt : job.prompt)}</p>
         </article>`,
       )
       .join("")}</div>
   </div>`;
-  $("#copyCodexBtn").addEventListener("click", () => copyText(data.codexInstruction));
-  $("#copyFirstPromptBtn").addEventListener("click", () => copyText(data.imageJobs[0]?.prompt || data.prompt));
+  $("#copyBatchBtn").addEventListener("click", () => copyText(mainInstruction));
+  $("#copyFirstPromptBtn").addEventListener("click", () => copyText(isChatGPT ? data.imageJobs[0]?.chatgptPrompt || data.prompt : data.imageJobs[0]?.prompt || data.prompt));
 }
 
 function renderAnalysis() {
