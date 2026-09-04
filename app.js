@@ -15,6 +15,7 @@ const formIds = [
   "episodeCount",
   "pageSize",
   "visualStyle",
+  "outputLayout",
   "brightnessMode",
   "dialogueInput",
 ];
@@ -261,7 +262,23 @@ function buildPrompt(data) {
     .map((beat, index) => `${index + 1}. ${beat.role}：${beat.action}；镜头：${beat.camera}${beat.dialogue ? `；配音参考：${beat.dialogue}` : ""}`)
     .join("\n");
   const brightness = getBrightnessSpec(data.brightnessMode);
-  return `生成一张完整的系列漫画/有声书视频画面，不要拆成独立插图。\nGenerate one complete series comic / audiobook video image, not separate illustrations.\n\n固定角色 / Recurring character:\n${data.characterProfile}\n\n画面风格 / Visual style:\n${data.visualStyle}\n\n亮度 / Brightness:\n${brightness.prompt}\n\n页面尺寸 / Image size:\n${data.pageSize}\n\n选定结构 / Selected layout:\n${data.selectedLayout.name}\n\n分镜 / Storyboard:\n${lines}\n\n重要多语种要求 / Multilingual requirement:\n图片里不要出现任何可读文字，不要标题，不要对白气泡，不要字幕，不要招牌文字，不要手机屏幕文字，不要车站名，不要水印或 logo。对白/旁白只作为后期配音和字幕脚本，不渲染在画面中。\nNo readable text anywhere in the image: no title, dialogue bubbles, subtitles, signs, phone-screen text, station names, watermark, or logo. Dialogue and narration are for later dubbing/subtitles only and must not be rendered into the image.\n\n画面要求 / Visual requirements:\n保持角色脸、发型、服装、随身物一致；用表情、动作、镜头和道具位置表达剧情；关键道具的位置变化可见；避免受版权保护的角色。\nKeep the character's face, hair, outfit, body, and belongings consistent. Communicate the story through expression, action, camera, lighting, and props. Avoid copyrighted characters.`;
+  const layoutSpec = getOutputLayoutSpec(data.outputLayout, data.panelCount, data.selectedLayout.name);
+  return `生成一张完整的系列漫画/有声书视频画面。\nGenerate one complete series comic / audiobook video image.\n\n固定角色 / Recurring character:\n${data.characterProfile}\n\n画面风格 / Visual style:\n${data.visualStyle}\n\n亮度 / Brightness:\n${brightness.prompt}\n\n页面尺寸 / Image size:\n${data.pageSize}\n\n输出布局 / Output layout:\n${layoutSpec.prompt}\n\n分镜 / Storyboard:\n${lines}\n\n重要多语种要求 / Multilingual requirement:\n图片里不要出现任何可读文字，不要标题，不要对白气泡，不要字幕，不要招牌文字，不要手机屏幕文字，不要车站名，不要水印或 logo。对白/旁白只作为后期配音和字幕脚本，不渲染在画面中。\nNo readable text anywhere in the image: no title, dialogue bubbles, subtitles, signs, phone-screen text, station names, watermark, or logo. Dialogue and narration are for later dubbing/subtitles only and must not be rendered into the image.\n\n画面要求 / Visual requirements:\n保持角色脸、发型、服装、随身物一致；用表情、动作、镜头和道具位置表达剧情；关键道具的位置变化可见；避免受版权保护的角色。\nKeep the character's face, hair, outfit, body, and belongings consistent. Communicate the story through expression, action, camera, lighting, and props. Avoid copyrighted characters.`;
+}
+
+function getOutputLayoutSpec(mode, panelCount, selectedLayoutName) {
+  const specs = {
+    "comic-page": {
+      label: "5 合 1 分镜漫画页 / 5-in-1 comic page",
+      prompt: `必须做成一张 ${panelCount} 合 1 的完整分镜漫画页，像右侧预览一样在同一张图片里有 ${panelCount} 个清楚分隔的漫画格。采用“${selectedLayoutName}”：上方两个小格，中间一个大转折格，下方两个小格；用边框、留白和画面节奏组织阅读顺序。不要生成单一电影场景。 It must be one complete ${panelCount}-panel comic page in a single image, matching the preview layout: two smaller top panels, one large middle turning panel, and two smaller bottom panels when using five panels. Use visible panel borders, gutters, and page rhythm. Do not generate a single cinematic scene.`,
+    },
+    "single-scene": {
+      label: "单张视频场景图 / Single video scene",
+      prompt:
+        "生成一张完整的单场景视频插图，不使用漫画分格。 Generate one complete single-scene video illustration without comic panels.",
+    },
+  };
+  return specs[mode] || specs["comic-page"];
 }
 
 function getBrightnessSpec(mode) {
@@ -300,7 +317,7 @@ function buildImageJobs(data) {
       id: `image-${String(episodeNumber).padStart(2, "0")}`,
       filename: `${slugify(data.seriesTitle)}-${String(episodeNumber).padStart(2, "0")}.png`,
       size: data.pageSize,
-      prompt: `${basePrompt}\n\n系列连续性 / Series continuity:\n${continuityLine}\n\n输出 / Output:\n一张完整的有声书视频画面，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，不要只给单格，不要给流程图，不要在画面里出现任何文字。\nOne complete audiobook video image, aspect ratio ${widthHeight[0]}:${widthHeight[1]}; not a single panel, not a flowchart, and no text anywhere in the image.`,
+      prompt: `${basePrompt}\n\n系列连续性 / Series continuity:\n${continuityLine}\n\n输出 / Output:\n一张完整的 ${data.panelCount} 合 1 漫画页，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，包含清楚分隔的多个分镜格，不要只给单格，不要给流程图，不要在画面里出现任何文字。\nOne complete ${data.panelCount}-in-1 comic page, aspect ratio ${widthHeight[0]}:${widthHeight[1]}, with clearly separated comic panels; not a single panel, not a flowchart, and no text anywhere in the image.`,
     });
   }
   return jobs;
@@ -325,6 +342,10 @@ function buildContract(data) {
       count: data.imageJobs?.length || 0,
       note: "静态网页不能直接调用 Codex 内置 image_gen；把 imageJobs 交给 Codex 聊天或接入 OpenAI Images API 后端。",
       text_policy: "image-no-readable-text; dialogue-for-audio-only",
+      layout: {
+        mode: data.outputLayout,
+        label: getOutputLayoutSpec(data.outputLayout, data.panelCount, data.selectedLayout.name).label,
+      },
       brightness: {
         mode: data.brightnessMode,
         label: getBrightnessSpec(data.brightnessMode).label,
@@ -352,6 +373,7 @@ function buildContract(data) {
       "保持固定角色身份不漂移",
       "最终图片不包含任何可读文字、对白气泡、字幕、标题、水印或 logo",
       "对白和旁白只作为多语种有声书配音脚本",
+      `输出布局：${getOutputLayoutSpec(data.outputLayout, data.panelCount, data.selectedLayout.name).label}`,
       `亮度设置：${getBrightnessSpec(data.brightnessMode).label}`,
       "关键道具、手部、方向和最终状态必须可见",
       "公开发布前必须人工验收原始尺寸和 25% 缩略图",
@@ -384,6 +406,7 @@ function collectData() {
     episodeCount: Math.max(1, Math.min(12, Number($("#episodeCount").value) || 1)),
     pageSize,
     visualStyle: $("#visualStyle").value,
+    outputLayout: $("#outputLayout").value,
     brightnessMode: $("#brightnessMode").value,
     dialogue,
     layouts,

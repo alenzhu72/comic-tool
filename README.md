@@ -40,6 +40,7 @@ Open `index.html` directly. You can paste a story or load a `.txt` file, then us
 - 页面结构预览；
 - 可复制给图像模型的整页漫画提示词；
 - 多语种有声书友好的无文字图片提示词；
+- 输出布局设置，默认生成 `5 合 1 分镜漫画页`；
 - 亮度设置，默认使用更适合手机/YouTube 视频的明亮可读画面；
 - 延续系列用的 JSON 合同；
 - localStorage 保存的剧集历史；
@@ -47,6 +48,7 @@ Open `index.html` directly. You can paste a story or load a `.txt` file, then us
 - Codex 图片生成任务包。
 
 - text-free prompts for multilingual audiobook images;
+- output layout control, defaulting to a `5-in-1 comic page`;
 - brightness control, defaulting to a brighter video-ready look for mobile and YouTube;
 - JSON contracts for continuity;
 - Codex image-generation task packs.
