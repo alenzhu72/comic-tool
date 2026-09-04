@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>系列日记漫画生成器</title>
+    <title>系列日记漫画生成器 / Comic Generator</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -12,32 +12,32 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Recurring Character Diary Comic</p>
-            <h1>系列日记漫画生成器</h1>
+            <h1>系列日记漫画生成器 / Comic Generator</h1>
           </div>
           <div class="toolbar" aria-label="主要操作">
             <button id="analyzeBtn" type="button" title="分析角色">
               <span aria-hidden="true">◎</span>
-              <span>角色分析</span>
+              <span>角色分析 / Character</span>
             </button>
             <button id="dialogueBtn" type="button" title="提取对白">
               <span aria-hidden="true">“”</span>
-              <span>对白提取</span>
+              <span>对白提取 / Dialogue</span>
             </button>
             <button id="storyboardBtn" class="primary" type="button" title="生成分镜">
               <span aria-hidden="true">▶</span>
-              <span>分镜</span>
+              <span>分镜 / Storyboard</span>
             </button>
             <button id="imageJobsBtn" type="button" title="生成图片任务">
               <span aria-hidden="true">▧</span>
-              <span>图片任务</span>
+              <span>图片任务 / Images</span>
             </button>
             <button id="saveBtn" type="button" title="保存剧集">
               <span aria-hidden="true">▣</span>
-              <span>保存</span>
+              <span>保存 / Save</span>
             </button>
             <button id="exportBtn" type="button" title="导出 JSON">
               <span aria-hidden="true">⇩</span>
-              <span>导出</span>
+              <span>导出 / Export</span>
             </button>
           </div>
         </header>
@@ -45,69 +45,77 @@
         <section class="editor-grid">
           <form class="input-panel" id="storyForm">
             <label>
-              <span>故事</span>
+              <span>故事 / Story</span>
               <textarea id="storyInput" rows="10">小澄为了不忘带午饭，把饭盒放在门口。出门时手机响了，她一边回消息一边换鞋，说：“我这次绝对不会忘。”最后她自然地跨过饭盒走了。</textarea>
             </label>
             <div class="file-row">
               <label class="file-button" for="storyFile">
                 <span aria-hidden="true">↥</span>
-                <span>读取 TXT</span>
+                <span>读取 TXT / Load TXT</span>
               </label>
               <input id="storyFile" class="visually-hidden" type="file" accept=".txt,text/plain" />
-              <span id="fileStatus" class="small">也可以直接粘贴故事。</span>
+              <span id="fileStatus" class="small">也可以直接粘贴故事。/ You can paste the story directly.</span>
             </div>
             <label>
-              <span>系列名</span>
+              <span>系列名 / Series title</span>
               <input id="seriesTitle" value="我的日记漫画" autocomplete="off" />
             </label>
             <div class="compact-row">
               <label>
-                <span>格数</span>
+                <span>格数 / Panels</span>
                 <input id="panelCount" type="number" min="4" max="8" value="5" />
               </label>
               <label>
-                <span>张数</span>
+                <span>张数 / Images</span>
                 <input id="episodeCount" type="number" min="1" max="12" value="3" />
               </label>
               <label>
-                <span>画幅</span>
+                <span>画幅 / Format</span>
                 <select id="pageSize">
-                  <option value="1080x1920">手机竖版 1080x1920</option>
-                  <option value="1920x1080">YouTube 横版 1920x1080</option>
-                  <option value="1080x1080">方版封面 1080x1080</option>
+                  <option value="1080x1920">手机竖版 / Mobile vertical 1080x1920</option>
+                  <option value="1920x1080">YouTube 横版 / YouTube landscape 1920x1080</option>
+                  <option value="1080x1080">方版封面 / Square cover 1080x1080</option>
                 </select>
               </label>
               <label>
-                <span>风格</span>
+                <span>风格 / Style</span>
                 <select id="visualStyle">
-                  <option>温柔手绘日记漫画，干净线稿，少量水彩质感</option>
-                  <option>清爽网页漫画，平涂色块，明确分镜边界</option>
-                  <option>铅笔速写日记，轻微纸张纹理，柔和阴影</option>
+                  <option>温柔手绘日记漫画，干净线稿，少量水彩质感 / gentle hand-drawn diary comic, clean ink, light watercolor texture</option>
+                  <option>清爽网页漫画，平涂色块，明确分镜边界 / clean web comic, flat color blocks, clear panel structure</option>
+                  <option>铅笔速写日记，轻微纸张纹理，柔和阴影 / pencil diary sketch, paper grain, soft shading</option>
                 </select>
               </label>
             </div>
             <label>
-              <span>角色分析结果</span>
-              <textarea id="characterProfile" rows="5" placeholder="点击“角色分析”后生成，可手动改。"></textarea>
+              <span>亮度 / Brightness</span>
+              <select id="brightnessMode">
+                <option value="brighter">明亮可读 / Brighter video-ready</option>
+                <option value="balanced">标准平衡 / Balanced</option>
+                <option value="dark">偏暗悬疑 / Dark suspense</option>
+              </select>
             </label>
             <label>
-              <span>对白/旁白提取结果</span>
-              <textarea id="dialogueInput" rows="4" placeholder="点击“对白提取”后生成，可作为配音脚本；不会写进图片。"></textarea>
+              <span>角色分析结果 / Character analysis</span>
+              <textarea id="characterProfile" rows="5" placeholder="点击“角色分析”后生成，可手动改。 / Click Character, then edit if needed."></textarea>
+            </label>
+            <label>
+              <span>对白/旁白提取结果 / Dialogue & narration</span>
+              <textarea id="dialogueInput" rows="4" placeholder="点击“对白提取”后生成，可作为配音脚本；不会写进图片。 / Used for audio only; never rendered into images."></textarea>
             </label>
           </form>
 
           <aside class="preview-panel">
-            <canvas id="pageCanvas" width="1200" height="1600" aria-label="漫画页面预览"></canvas>
+            <canvas id="pageCanvas" width="1080" height="1920" aria-label="漫画页面预览 / Comic page preview"></canvas>
           </aside>
         </section>
 
         <section class="tabs" aria-label="结果视图">
-          <button class="tab active" data-tab="beats" type="button">分镜</button>
-          <button class="tab" data-tab="analysis" type="button">分析</button>
-          <button class="tab" data-tab="images" type="button">图片</button>
-          <button class="tab" data-tab="prompt" type="button">提示词</button>
-          <button class="tab" data-tab="contract" type="button">合同</button>
-          <button class="tab" data-tab="history" type="button">系列</button>
+          <button class="tab active" data-tab="beats" type="button">分镜 / Storyboard</button>
+          <button class="tab" data-tab="analysis" type="button">分析 / Analysis</button>
+          <button class="tab" data-tab="images" type="button">图片 / Images</button>
+          <button class="tab" data-tab="prompt" type="button">提示词 / Prompt</button>
+          <button class="tab" data-tab="contract" type="button">合同 / Contract</button>
+          <button class="tab" data-tab="history" type="button">系列 / Series</button>
         </section>
 
         <section class="result-area">

@@ -1,12 +1,16 @@
-# 系列日记漫画生成器
+# 系列日记漫画生成器 / Series Comic Generator
 
 这个项目已经安装了 GitHub 上的 `recurring-character-diary-comic` 技能包：
+
+This project includes the `recurring-character-diary-comic` skill package:
 
 ```text
 skills/recurring-character-diary-comic/
 ```
 
 它适合做固定原创角色的日记漫画工作流：锁定角色、故事节拍、精确对白、页面结构、QA 和确定性加字。它不是完整网页应用，也不自带图像模型。
+
+It is useful for recurring-character diary comic workflows: character continuity, story beats, dialogue/narration records, page planning, QA, and optional deterministic lettering. It is not a complete image-generation app by itself.
 
 本目录额外提供了一个本地静态工具：
 
@@ -18,10 +22,17 @@ app.js
 
 直接打开 `index.html` 即可使用。现在可以只输入故事，或点击“读取 TXT”加载 `.txt` 文件，然后分别点击：
 
+Open `index.html` directly. You can paste a story or load a `.txt` file, then use:
+
 - “角色分析”：自动推断主角、场景、关键道具和连续性要求；
 - “对白提取”：从引号和短句中提取对白，可手动修正；
 - “分镜”：生成 4-8 格分镜、页面结构预览和完整提示词。
 - “图片任务”：生成一组可交给 Codex 图像生成功能的批量指令和逐张提示词。
+
+- “角色分析 / Character”: detects the protagonist, setting, key props, and continuity notes.
+- “对白提取 / Dialogue”: extracts dialogue/narration for audio and subtitles.
+- “分镜 / Storyboard”: creates 4-8 visual beats and prompt material.
+- “图片任务 / Images”: creates image-generation prompts for Codex image generation.
 
 工具会生成：
 
@@ -29,16 +40,40 @@ app.js
 - 页面结构预览；
 - 可复制给图像模型的整页漫画提示词；
 - 多语种有声书友好的无文字图片提示词；
+- 亮度设置，默认使用更适合手机/YouTube 视频的明亮可读画面；
 - 延续系列用的 JSON 合同；
 - localStorage 保存的剧集历史；
 - 可下载的 `.comic.json` 文件。
 - Codex 图片生成任务包。
+
+- text-free prompts for multilingual audiobook images;
+- brightness control, defaulting to a brighter video-ready look for mobile and YouTube;
+- JSON contracts for continuity;
+- Codex image-generation task packs.
 
 默认画幅面向视频制作：
 
 - 手机竖版：`1080x1920`，适合 Shorts、Reels、TikTok 等竖屏视频；
 - YouTube 横版：`1920x1080`，适合 16:9 横屏有声书视频；
 - 方版封面：`1080x1080`，适合封面或社交预览。
+
+Default video formats:
+
+- Mobile vertical: `1080x1920`, for Shorts, Reels, TikTok, and phone-first videos.
+- YouTube landscape: `1920x1080`, for 16:9 audiobook videos.
+- Square cover: `1080x1080`, for covers and social previews.
+
+## 图片文字与亮度 / Text And Brightness
+
+图片任务默认禁止画面内文字：不要标题、对白气泡、字幕、招牌、手机屏幕文字、水印或 logo。对白和旁白只保留在 JSON 中，用于后期多语种配音和字幕。
+
+Image prompts are text-free by default: no titles, speech bubbles, subtitles, signs, phone-screen text, watermarks, or logos. Dialogue and narration stay in JSON for later multilingual dubbing and subtitles.
+
+亮度可选：
+
+- 明亮可读 / Brighter video-ready：默认选项，减少大片死黑，适合视频观看；
+- 标准平衡 / Balanced：保留电影感，暗部仍有细节；
+- 偏暗悬疑 / Dark suspense：更暗，但仍要求主体和关键动作可见。
 
 ## 关于真正生成图片
 

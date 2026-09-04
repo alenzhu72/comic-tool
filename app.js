@@ -15,6 +15,7 @@ const formIds = [
   "episodeCount",
   "pageSize",
   "visualStyle",
+  "brightnessMode",
   "dialogueInput",
 ];
 
@@ -259,7 +260,29 @@ function buildPrompt(data) {
   const lines = data.beats
     .map((beat, index) => `${index + 1}. ${beat.role}：${beat.action}；镜头：${beat.camera}${beat.dialogue ? `；配音参考：${beat.dialogue}` : ""}`)
     .join("\n");
-  return `生成一张完整的系列漫画/有声书视频画面，不要拆成独立插图。\n\n固定角色：${data.characterProfile}\n\n画面风格：${data.visualStyle}\n页面尺寸：${data.pageSize}\n选定结构：${data.selectedLayout.name}\n\n分镜：\n${lines}\n\n重要多语种要求：图片里不要出现任何可读文字，不要标题，不要对白气泡，不要字幕，不要招牌文字，不要手机屏幕文字，不要车站名，不要水印或 logo。对白/旁白只作为后期配音和字幕脚本，不渲染在画面中。\n\n画面要求：保持角色脸、发型、服装、随身物一致；用表情、动作、镜头和道具位置表达剧情；关键道具的位置变化可见；避免受版权保护的角色。`;
+  const brightness = getBrightnessSpec(data.brightnessMode);
+  return `生成一张完整的系列漫画/有声书视频画面，不要拆成独立插图。\nGenerate one complete series comic / audiobook video image, not separate illustrations.\n\n固定角色 / Recurring character:\n${data.characterProfile}\n\n画面风格 / Visual style:\n${data.visualStyle}\n\n亮度 / Brightness:\n${brightness.prompt}\n\n页面尺寸 / Image size:\n${data.pageSize}\n\n选定结构 / Selected layout:\n${data.selectedLayout.name}\n\n分镜 / Storyboard:\n${lines}\n\n重要多语种要求 / Multilingual requirement:\n图片里不要出现任何可读文字，不要标题，不要对白气泡，不要字幕，不要招牌文字，不要手机屏幕文字，不要车站名，不要水印或 logo。对白/旁白只作为后期配音和字幕脚本，不渲染在画面中。\nNo readable text anywhere in the image: no title, dialogue bubbles, subtitles, signs, phone-screen text, station names, watermark, or logo. Dialogue and narration are for later dubbing/subtitles only and must not be rendered into the image.\n\n画面要求 / Visual requirements:\n保持角色脸、发型、服装、随身物一致；用表情、动作、镜头和道具位置表达剧情；关键道具的位置变化可见；避免受版权保护的角色。\nKeep the character's face, hair, outfit, body, and belongings consistent. Communicate the story through expression, action, camera, lighting, and props. Avoid copyrighted characters.`;
+}
+
+function getBrightnessSpec(mode) {
+  const specs = {
+    brighter: {
+      label: "明亮可读 / Brighter video-ready",
+      prompt:
+        "整体亮度提高，适合手机和 YouTube 视频观看；保留悬疑气氛，但使用更清楚的轮廓、更亮的环境补光、可见的面部表情和中等对比度，不要大片死黑。 Brighter video-ready lighting: preserve suspense, but use clearer silhouettes, visible faces, stronger ambient fill light, medium contrast, and avoid large crushed-black areas.",
+    },
+    balanced: {
+      label: "标准平衡 / Balanced",
+      prompt:
+        "标准电影感亮度，暗部保留细节，主体和关键道具清楚可见。 Balanced cinematic brightness with detailed shadows; the subject and key props remain clearly visible.",
+    },
+    dark: {
+      label: "偏暗悬疑 / Dark suspense",
+      prompt:
+        "偏暗悬疑氛围，但仍必须保留主体轮廓、表情和关键动作可见。 Dark suspense mood, while keeping character silhouette, expression, and key action readable.",
+    },
+  };
+  return specs[mode] || specs.brighter;
 }
 
 function buildImageJobs(data) {
@@ -271,13 +294,13 @@ function buildImageJobs(data) {
     const episodeNumber = index + 1;
     const continuityLine =
       episodeNumber === 1
-        ? "这是系列第一张，建立固定角色外观和页面语言。"
-        : `这是同一系列第 ${episodeNumber} 张，必须延续第 1 张的角色身份、线稿、上色和镜头语言。`;
+        ? "这是系列第一张，建立固定角色外观和页面语言。 This is image 1; establish the recurring character and visual language."
+        : `这是同一系列第 ${episodeNumber} 张，必须延续第 1 张的角色身份、线稿、上色、亮度和镜头语言。 This is image ${episodeNumber}; preserve the character identity, linework, color, brightness, and camera language from image 1.`;
     jobs.push({
       id: `image-${String(episodeNumber).padStart(2, "0")}`,
       filename: `${slugify(data.seriesTitle)}-${String(episodeNumber).padStart(2, "0")}.png`,
       size: data.pageSize,
-      prompt: `${basePrompt}\n\n系列连续性：${continuityLine}\n输出：一张完整的有声书视频画面，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，不要只给单格，不要给流程图，不要在画面里出现任何文字。`,
+      prompt: `${basePrompt}\n\n系列连续性 / Series continuity:\n${continuityLine}\n\n输出 / Output:\n一张完整的有声书视频画面，尺寸比例 ${widthHeight[0]}:${widthHeight[1]}，不要只给单格，不要给流程图，不要在画面里出现任何文字。\nOne complete audiobook video image, aspect ratio ${widthHeight[0]}:${widthHeight[1]}; not a single panel, not a flowchart, and no text anywhere in the image.`,
     });
   }
   return jobs;
@@ -287,7 +310,7 @@ function buildCodexInstruction(data) {
   const jobList = data.imageJobs
     .map((job) => `- ${job.filename}: ${job.prompt.replace(/\n+/g, " ").slice(0, 420)}...`)
     .join("\n");
-  return `请使用 Codex 内置 image_gen 为我生成这一组系列漫画图片，并把最终图片保存到当前项目的 output/images/ 目录。先生成第 1 张作为角色和风格锚点；后续图片必须延续同一角色身份、页面风格、线稿和配色。\n\n${jobList}`;
+  return `请使用 Codex 内置 image_gen 为我生成这一组系列漫画图片，并把最终图片保存到当前项目的 output/images/ 目录。先生成第 1 张作为角色和风格锚点；后续图片必须延续同一角色身份、页面风格、线稿、配色和亮度。图片中不要出现任何可读文字。\n\nPlease use Codex built-in image_gen to generate this series of comic/audiobook images and save the final images to output/images/ in the current project. Generate image 1 first as the character and style anchor. Later images must preserve the same character identity, page style, linework, colors, and brightness. No readable text anywhere in the images.\n\n${jobList}`;
 }
 
 function buildContract(data) {
@@ -302,6 +325,10 @@ function buildContract(data) {
       count: data.imageJobs?.length || 0,
       note: "静态网页不能直接调用 Codex 内置 image_gen；把 imageJobs 交给 Codex 聊天或接入 OpenAI Images API 后端。",
       text_policy: "image-no-readable-text; dialogue-for-audio-only",
+      brightness: {
+        mode: data.brightnessMode,
+        label: getBrightnessSpec(data.brightnessMode).label,
+      },
     },
     story_source: data.story,
     analysis: {
@@ -325,6 +352,7 @@ function buildContract(data) {
       "保持固定角色身份不漂移",
       "最终图片不包含任何可读文字、对白气泡、字幕、标题、水印或 logo",
       "对白和旁白只作为多语种有声书配音脚本",
+      `亮度设置：${getBrightnessSpec(data.brightnessMode).label}`,
       "关键道具、手部、方向和最终状态必须可见",
       "公开发布前必须人工验收原始尺寸和 25% 缩略图",
     ],
@@ -356,6 +384,7 @@ function collectData() {
     episodeCount: Math.max(1, Math.min(12, Number($("#episodeCount").value) || 1)),
     pageSize,
     visualStyle: $("#visualStyle").value,
+    brightnessMode: $("#brightnessMode").value,
     dialogue,
     layouts,
     selectedLayout,
@@ -438,13 +467,13 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
 function renderViews(data) {
   $("#beatsView").innerHTML = `<div class="beat-grid">${data.beats
     .map(
-      (beat) => `<article class="beat-card">
-        <h3>${beat.id.toUpperCase()} · ${beat.role}</h3>
-        <p>${escapeHtml(beat.action)}</p>
-        <p>${escapeHtml(beat.camera)}</p>
-        <p>${escapeHtml(beat.dialogue || "无对白")}</p>
-        <p class="small">${escapeHtml(beat.risk)}</p>
-      </article>`,
+        (beat) => `<article class="beat-card">
+          <h3>${beat.id.toUpperCase()} · ${beat.role}</h3>
+          <p>${escapeHtml(beat.action)}</p>
+          <p>${escapeHtml(beat.camera)}</p>
+          <p>${escapeHtml(beat.dialogue || "无对白 / No dialogue")}</p>
+          <p class="small">${escapeHtml(beat.risk)}</p>
+        </article>`,
     )
     .join("")}</div>`;
   $("#promptView").innerHTML = `<pre>${escapeHtml(data.prompt)}</pre>`;
@@ -457,8 +486,8 @@ function renderViews(data) {
 function renderImageJobs(data) {
   $("#imagesView").innerHTML = `<div class="image-job-layout">
     <div class="job-actions">
-      <button type="button" id="copyCodexBtn">复制 Codex 批量指令</button>
-      <button type="button" id="copyFirstPromptBtn">复制第 1 张提示词</button>
+      <button type="button" id="copyCodexBtn">复制 Codex 批量指令 / Copy batch instruction</button>
+      <button type="button" id="copyFirstPromptBtn">复制第 1 张提示词 / Copy first prompt</button>
     </div>
     <pre>${escapeHtml(data.codexInstruction)}</pre>
     <div class="beat-grid">${data.imageJobs
@@ -480,24 +509,24 @@ function renderAnalysis() {
   const dialogue = parseDialogue($("#dialogueInput").value);
   $("#analysisView").innerHTML = `<div class="beat-grid">
     <article class="beat-card">
-      <h3>角色</h3>
-      <p>${escapeHtml(analysis?.profile || "尚未分析。")}</p>
+      <h3>角色 / Character</h3>
+      <p>${escapeHtml(analysis?.profile || "尚未分析。 / Not analyzed yet.")}</p>
     </article>
     <article class="beat-card">
-      <h3>道具与场景</h3>
-      <p>场景：${escapeHtml(analysis?.setting || "未识别")}</p>
-      <p>道具：${escapeHtml((analysis?.props || []).join("、") || "未识别")}</p>
+      <h3>道具与场景 / Props & Setting</h3>
+      <p>场景 / Setting: ${escapeHtml(analysis?.setting || "未识别 / Not detected")}</p>
+      <p>道具 / Props: ${escapeHtml((analysis?.props || []).join("、") || "未识别 / Not detected")}</p>
     </article>
     <article class="beat-card">
-      <h3>对白</h3>
-      <p>${escapeHtml(dialogue.length ? dialogue.map((line) => `${line.speaker}：${line.text}`).join(" / ") : "未提取")}</p>
+      <h3>对白 / Dialogue</h3>
+      <p>${escapeHtml(dialogue.length ? dialogue.map((line) => `${line.speaker}：${line.text}`).join(" / ") : "未提取 / Not extracted")}</p>
     </article>
   </div>`;
 }
 
 function renderHistory() {
   if (!state.history.length) {
-    $("#historyView").innerHTML = `<p class="small">还没有保存的剧集。</p>`;
+    $("#historyView").innerHTML = `<p class="small">还没有保存的剧集。/ No saved episodes yet.</p>`;
     return;
   }
   $("#historyView").innerHTML = `<div class="history-list">${state.history
@@ -505,9 +534,9 @@ function renderHistory() {
       (item) => `<div class="history-item">
         <div>
           <strong>${escapeHtml(item.seriesTitle)}</strong>
-          <div class="small">${new Date(item.createdAt).toLocaleString()} · ${item.panelCount} 格 · ${escapeHtml(item.characterName)}</div>
+          <div class="small">${new Date(item.createdAt).toLocaleString()} · ${item.panelCount} 格 / panels · ${escapeHtml(item.characterName)}</div>
         </div>
-        <button type="button" data-load="${item.id}">载入</button>
+        <button type="button" data-load="${item.id}">载入 / Load</button>
       </div>`,
     )
     .join("")}</div>`;
@@ -600,7 +629,7 @@ $("#storyFile").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   $("#storyInput").value = await file.text();
-  $("#fileStatus").textContent = `已读取：${file.name}`;
+  $("#fileStatus").textContent = `已读取 / Loaded: ${file.name}`;
   $("#characterProfile").value = "";
   $("#dialogueInput").value = "";
   state.characterAnalysis = null;
